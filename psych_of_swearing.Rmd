@@ -46,7 +46,7 @@ dat_animal <- dat2 %>%
   mutate(type = "animal")
 
 dat_swears <- dat2 %>%
-  select(subject, swears) %>%
+  select(subject,gender, swears) %>%
   unnest_tokens(input = swears, output = words) %>%
   mutate(type = "swear")
 
@@ -147,4 +147,20 @@ dat_swears%>%
   scale_fill_viridis_d(option = "D")
 ```
 
+## Most frequent words by gender
 
+```{r, echo = FALSE}
+dat_swears%>%
+  na.omit()%>%
+  group_by(gender) %>%
+  count(words, sort = TRUE)%>%
+  top_n(10) %>% 
+  ungroup() %>%
+  mutate(words = reorder_within(words, n, gender))%>%
+  ggplot(aes(x = words, y = n, fill = words))+
+  geom_col(show.legend = FALSE)+
+  coord_flip() +
+  scale_fill_viridis_d(option = "E") +
+  facet_wrap(~gender, scales = "free_y") +
+  scale_x_reordered()
+```
