@@ -149,7 +149,7 @@ dat_swears%>%
 
 ## Most frequent words by gender
 
-```{r, echo = FALSE}
+```{r, echo = FALSE, message = FALSE, warning  = FALSE}
 dat_swears%>%
   na.omit()%>%
   group_by(gender) %>%
