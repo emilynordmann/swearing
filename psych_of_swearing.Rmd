@@ -1,0 +1,150 @@
+---
+title: "Psychology of Swearing"
+author: "Emily Nordmann"
+output: html_document
+---
+
+```{r setup, include=FALSE, echo=FALSE, warning=FALSE, message=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(tidytext)
+library(lsr)
+library(gridExtra)
+library(ggforce)
+library(afex)
+library(emmeans)
+dat <- read_csv("data.csv")
+```
+
+```{r, echo = FALSE, message=FALSE, warning=FALSE}
+dat2 <- rename(dat,
+              age = `Age (in whole years)`,
+              gender = Gender,
+              letter = `Please write as many words as you can beginning with the letter "A".`, 
+              animal = `Please write down as many different types of animal as you can.`,
+              swears = `Please write down as many swear words as you can.`) %>%
+  select(-Timestamp) %>%
+  mutate(subject = row_number()) %>%
+  mutate(age = as.numeric(age),
+         gender = as.factor(gender),
+         subject = as.factor(subject)) %>%
+  select(subject,everything()) %>%
+  mutate(gender = fct_relevel(gender, c("Man", "Woman", "Other")))
+  
+
+# convert to tidytext and calculate number of words in each category
+
+dat_letter <- dat2 %>%
+  select(subject, letter) %>%
+  unnest_tokens(input = letter, output = words) %>%
+  mutate(type = "letter")
+ 
+
+dat_animal <- dat2 %>%
+  select(subject, animal) %>%
+  unnest_tokens(input = animal, output = words) %>%
+  mutate(type = "animal")
+
+dat_swears <- dat2 %>%
+  select(subject, swears) %>%
+  unnest_tokens(input = swears, output = words) %>%
+  mutate(type = "swear")
+
+all_dat <- bind_rows(dat_animal, dat_letter, dat_swears)
+
+all_counts <- all_dat %>%
+  group_by(subject, type) %>%
+  summarise(score = length(words)) %>%
+  inner_join(dat2, by = "subject") %>%
+  select(subject:gender) %>%
+  ungroup()
+
+```
+
+## Relationship between age and vocabulary
+
+
+```{r, echo = FALSE}
+corr_dat <- as.data.frame(all_counts %>%
+  spread(key = type, value = score) %>%
+    select(age, animal, swear))
+
+vocab_corr <- correlate(corr_dat, test = TRUE, p.adjust.method = "holm")
+
+```
+
+The correlation between age and animals is r = `r vocab_corr$correlation[1,2] %>% round(2)`, p = `r vocab_corr$p.value[1,2] %>% round(3)`. 
+
+The correlation between age and swears is r = `r vocab_corr$correlation[1,3] %>% round(2)`, p = `r vocab_corr$p.value[1,3] %>% round(3)`. 
+
+The correlation between swears and animals is r = `r vocab_corr$correlation[3,1] %>% round(2)`, p = `r vocab_corr$p.value[3,1] %>% round(3)`. 
+
+```{r, echo = FALSE}
+ggplot(corr_dat) +
+  geom_point(aes(x = .panel_x, y = .panel_y)) +
+  geom_autodensity() +
+  facet_matrix(vars(age, animal, swear), layer.diag = 2) +
+  theme_bw()
+```
+
+
+## Swearing scores by gender
+
+```{r, echo=FALSE}
+all_counts %>%
+  filter(type == "swear") %>%
+  group_by(gender) %>%
+  summarise(average_score = mean(score, na.rm = TRUE)) %>%
+  knitr::kable(align = 'c', digits = 2)  
+
+```
+
+<br>
+
+```{r, echo = FALSE}
+all_counts %>%
+  filter(type == "swear") %>%
+  ggplot(aes(x = gender, y = score, fill = gender)) +
+  geom_violin(trim = FALSE, alpha = .5) +
+  geom_boxplot(show.legend = FALSE, alpha = .7, width = .2) +
+  theme_minimal() +
+  scale_fill_viridis_d(option = "E")
+```
+
+```{r, echo = FALSE, message=FALSE}
+anova_dat <- all_counts %>%
+  filter(type == "swear") %>%
+  droplevels()
+
+mod <- aov_ez(id = "subject",
+       dv = "score",
+       between = "gender",
+       data = anova_dat)
+
+mod_pairwise <-emmeans(mod$aov, pairwise ~ gender, adjust = "bonferroni")
+mod_contrasts <- mod_pairwise$contrasts %>% tidy()
+
+mod$Anova %>%
+  knitr::kable(align = 'c', digits = 2) 
+
+mod_contrasts %>%
+  knitr::kable(align = 'c', digits = 2) 
+```
+
+
+
+## Most frequent swear words
+
+```{r, echo = FALSE}
+dat_swears%>%
+  na.omit()%>%
+  count(words, sort = TRUE)%>%
+  head(10) %>%
+  mutate(words = reorder(words, n))%>%
+  ggplot(aes(x = words, y = n, fill = words))+
+  geom_col(show.legend = FALSE)+
+  coord_flip() +
+  scale_fill_viridis_d(option = "D")
+```
+
+
