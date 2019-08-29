@@ -1,12 +1,11 @@
 ---
-title: "Psychology of Swearing"
-author: "Emily Nordmann"
 output: html_document
 ---
 
 ```{r setup, include=FALSE, echo=FALSE, warning=FALSE, message=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
+library(wordcloud)
 library(tidytext)
 library(lsr)
 library(gridExtra)
@@ -61,11 +60,17 @@ all_counts <- all_dat %>%
 
 ```
 
-This is the website to accompany the Psychology of Swearing talk held on Friday 30th August as part of the University of Glasgow Short Course series. The slides presented in the talk can be downloaded by [clicking this link]("slide.pdf").
+<center>
+
+![](title.png)
+
+</center>
+
+This website accompanies the Psychology of Swearing talk held on Friday 30th August 2019 as part of the University of Glasgow Short Course series. 
 
 ## Reading list
 
-If you would like more information abotu anything presented in this talk, I reccomend the following sources:
+If you would like more information about anything presented in this talk, I recommend the following sources:
 
 **Books**
 
@@ -119,7 +124,7 @@ The correlation between age and swears is r = `r vocab_corr$correlation[1,3] %>%
 
 The correlation between swears and animals is r = `r vocab_corr$correlation[3,1] %>% round(2)`, p = `r vocab_corr$p.value[3,1] %>% round(3)`. 
 
-```{r, echo = FALSE}
+```{r, echo = FALSE, fig.align="center"}
 corr_dat %>%
   na.omit() %>%
   ggplot() +
@@ -130,7 +135,57 @@ corr_dat %>%
 ```
 
 
-## Swearing scores by gender
+## Vocabulary scores by gender
+
+### General fluency
+
+```{r, echo=FALSE, fig.align="center"}
+all_counts %>%
+  filter(type == "animal") %>%
+  drop_na(gender) %>%
+  group_by(gender) %>%
+  summarise(average_score = mean(score, na.rm = TRUE)) %>%
+  knitr::kable(align = 'c', digits = 2)  
+
+```
+
+<br>
+
+```{r, echo = FALSE, fig.align="center"}
+all_counts %>%
+  filter(type == "animal") %>%
+  drop_na(gender) %>%
+  ggplot(aes(x = gender, y = score, fill = gender)) +
+  geom_violin(trim = FALSE, alpha = .5, show.legend = FALSE) +
+  geom_boxplot(show.legend = FALSE, alpha = .7, width = .2) +
+  theme_minimal() +
+  scale_fill_viridis_d(option = "E")
+```
+
+### One-way ANOVA, general fluency by gender
+
+```{r, echo = FALSE, message=FALSE}
+anova_dat_animal <- all_counts %>%
+  filter(type == "animal",
+         gender != "Other") %>%
+  droplevels()
+
+mod <- aov_ez(id = "subject",
+       dv = "score",
+       between = "gender",
+       data = anova_dat_animal)
+
+mod_pairwise <-emmeans(mod$aov, pairwise ~ gender, adjust = "bonferroni")
+mod_contrasts <- mod_pairwise$contrasts %>% tidy()
+
+mod$Anova %>%
+  knitr::kable(align = 'c', digits = 2) 
+
+# mod_contrasts %>%
+ # knitr::kable(align = 'c', digits = 2) 
+```
+
+### Swearing
 
 ```{r, echo=FALSE}
 all_counts %>%
@@ -144,7 +199,7 @@ all_counts %>%
 
 <br>
 
-```{r, echo = FALSE}
+```{r, echo = FALSE, fig.align="center"}
 all_counts %>%
   filter(type == "swear") %>%
   drop_na(gender) %>%
@@ -155,11 +210,12 @@ all_counts %>%
   scale_fill_viridis_d(option = "E")
 ```
 
-### One-way ANOVA, scores by gender
+### One-way ANOVA, swearing by gender
 
 ```{r, echo = FALSE, message=FALSE}
 anova_dat <- all_counts %>%
-  filter(type == "swear") %>%
+  filter(type == "swear",
+         gender != "Other") %>%
   droplevels()
 
 mod <- aov_ez(id = "subject",
@@ -173,15 +229,15 @@ mod_contrasts <- mod_pairwise$contrasts %>% tidy()
 mod$Anova %>%
   knitr::kable(align = 'c', digits = 2) 
 
-mod_contrasts %>%
-  knitr::kable(align = 'c', digits = 2) 
+# mod_contrasts %>%
+#  knitr::kable(align = 'c', digits = 2) 
 ```
 
 
 
 ## Most frequent swear words
 
-```{r, echo = FALSE}
+```{r, echo = FALSE, fig.align="center"}
 dat_swears%>%
   na.omit()%>%
   count(words, sort = TRUE)%>%
@@ -193,9 +249,18 @@ dat_swears%>%
   scale_fill_viridis_d(option = "D")
 ```
 
+## Word cloud
+
+```{r, echo = FALSE, message = FALSE, warning  = FALSE, fig.align="center"}
+swears <- all_dat %>%
+  filter(type == "swear")
+
+wordcloud(words = swears$words, max.words = 90)
+```
+
 ## Most frequent words by gender
 
-```{r, echo = FALSE, message = FALSE, warning  = FALSE}
+```{r, echo = FALSE, message = FALSE, warning  = FALSE, fig.align="center"}
 dat_swears%>%
   na.omit()%>%
   group_by(gender) %>%
@@ -209,4 +274,31 @@ dat_swears%>%
   scale_fill_viridis_d(option = "E") +
   facet_wrap(~gender, scales = "free_y") +
   scale_x_reordered()
+```
+
+## Word cloud - men
+```{r, echo = FALSE, fig.align="center", warning = FALSE, message = FALSE}
+swears_man <- swears %>%
+  filter(gender == "Man")
+
+swears_woman <- swears %>%
+  filter(gender == "Woman")
+
+swears_other <- swears %>%
+  filter(gender == "Other")
+  
+wordcloud(words = swears_man$words, max.words = 90)
+
+```
+
+## Word cloud - women
+
+```{r, echo = FALSE, fig.align="center", warning = FALSE, message = FALSE}
+wordcloud(words = swears_woman$words, max.words = 90)
+```
+
+## Word cloud - non-binary/other
+
+```{r, echo = FALSE, fig.align="center", warning = FALSE, message = FALSE}
+wordcloud(words = swears_other$words, max.words = 90)
 ```
