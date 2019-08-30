@@ -116,7 +116,6 @@ corr_dat <- as.data.frame(all_counts %>%
     select(age, animal, swear))
 
 vocab_corr <- correlate(corr_dat, test = TRUE, p.adjust.method = "holm")
-vocab_corr
 ```
 
 The correlation between age and animals is r = `r vocab_corr$correlation[1,2] %>% round(2)`, p = `r vocab_corr$p.value[1,2] %>% round(3)`. 
