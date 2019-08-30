@@ -162,29 +162,6 @@ all_counts %>%
   scale_fill_viridis_d(option = "E")
 ```
 
-### One-way ANOVA, general fluency by gender
-
-```{r, echo = FALSE, message=FALSE}
-anova_dat_animal <- all_counts %>%
-  filter(type == "animal",
-         gender != "Other") %>%
-  droplevels()
-
-mod <- aov_ez(id = "subject",
-       dv = "score",
-       between = "gender",
-       data = anova_dat_animal)
-
-mod_pairwise <-emmeans(mod$aov, pairwise ~ gender, adjust = "bonferroni")
-mod_contrasts <- mod_pairwise$contrasts %>% tidy()
-
-mod$Anova %>%
-  knitr::kable(align = 'c', digits = 2) 
-
-# mod_contrasts %>%
- # knitr::kable(align = 'c', digits = 2) 
-```
-
 ### Swearing
 
 ```{r, echo=FALSE}
@@ -210,31 +187,6 @@ all_counts %>%
   scale_fill_viridis_d(option = "E")
 ```
 
-### One-way ANOVA, swearing by gender
-
-```{r, echo = FALSE, message=FALSE}
-anova_dat <- all_counts %>%
-  filter(type == "swear",
-         gender != "Other") %>%
-  droplevels()
-
-mod <- aov_ez(id = "subject",
-       dv = "score",
-       between = "gender",
-       data = anova_dat)
-
-mod_pairwise <-emmeans(mod$aov, pairwise ~ gender, adjust = "bonferroni")
-mod_contrasts <- mod_pairwise$contrasts %>% tidy()
-
-mod$Anova %>%
-  knitr::kable(align = 'c', digits = 2) 
-
-# mod_contrasts %>%
-#  knitr::kable(align = 'c', digits = 2) 
-```
-
-
-
 ## Most frequent swear words
 
 ```{r, echo = FALSE, fig.align="center"}
@@ -242,8 +194,9 @@ dat_swears%>%
   na.omit()%>%
   count(words, sort = TRUE)%>%
   head(10) %>%
-  mutate(words = reorder(words, n))%>%
-  ggplot(aes(x = words, y = n, fill = words))+
+  mutate(percent = n/sum(n)*100) %>%
+  mutate(words = reorder(words, percent))%>%
+  ggplot(aes(x = words, y = percent, fill = words))+
   geom_col(show.legend = FALSE)+
   coord_flip() +
   scale_fill_viridis_d(option = "D")
@@ -255,7 +208,7 @@ dat_swears%>%
 swears <- all_dat %>%
   filter(type == "swear")
 
-wordcloud(words = swears$words, max.words = 90)
+wordcloud(words = swears$words, max.words = 90, min.freq = 1)
 ```
 
 ## Most frequent words by gender
@@ -266,9 +219,10 @@ dat_swears%>%
   group_by(gender) %>%
   count(words, sort = TRUE)%>%
   top_n(10) %>% 
+  mutate(percent = n/sum(n)*100) %>%
   ungroup() %>%
-  mutate(words = reorder_within(words, n, gender))%>%
-  ggplot(aes(x = words, y = n, fill = words))+
+  mutate(words = reorder_within(words, percent, gender)) %>%
+  ggplot(aes(x = words, y = percent, fill = words))+
   geom_col(show.legend = FALSE)+
   coord_flip() +
   scale_fill_viridis_d(option = "E") +
@@ -287,18 +241,18 @@ swears_woman <- swears %>%
 swears_other <- swears %>%
   filter(gender == "Other")
   
-wordcloud(words = swears_man$words, max.words = 90)
+wordcloud(words = swears_man$words, max.words = 90, min.freq = 1)
 
 ```
 
 ## Word cloud - women
 
 ```{r, echo = FALSE, fig.align="center", warning = FALSE, message = FALSE}
-wordcloud(words = swears_woman$words, max.words = 90)
+wordcloud(words = swears_woman$words, max.words = 90, min.freq = 1)
 ```
 
 ## Word cloud - non-binary/other
 
 ```{r, echo = FALSE, fig.align="center", warning = FALSE, message = FALSE}
-wordcloud(words = swears_other$words, max.words = 90)
+wordcloud(words = swears_other$words, max.words = 90, min.freq = 1)
 ```
